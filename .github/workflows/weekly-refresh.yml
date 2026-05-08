@@ -1,0 +1,17 @@
+name: Weekly Data Refresh
+
+on:
+  schedule:
+    - cron: '30 20 * * 0'   # Sunday 20:30 UTC = Sunday 2:00 AM IST
+  workflow_dispatch:          # Manual trigger from GitHub UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger refresh pipeline
+        run: |
+          curl -X POST ${{ secrets.APP_URL }}/api/admin/refresh \
+            -H "Authorization: Bearer ${{ secrets.PIPELINE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail
