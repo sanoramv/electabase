@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { Metadata } from "next";
+import { IdeologyTag } from "@/components/ui/ideology-tag";
 
 export const metadata: Metadata = { title: "Political Parties" };
 
@@ -50,11 +51,9 @@ export default async function PartiesPage() {
                   {party._count.currentMembers} member{party._count.currentMembers !== 1 ? "s" : ""}
                 </p>
                 {Array.isArray(party.ideologyTags) && party.ideologyTags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="flex flex-wrap gap-1 mt-1.5">
                     {(party.ideologyTags as string[]).slice(0, 3).map((tag) => (
-                      <span key={tag} className="inline-block bg-gray-100 text-gray-600 text-xs px-1.5 py-0.5 rounded">
-                        {tag}
-                      </span>
+                      <IdeologyTag key={tag} tag={tag} />
                     ))}
                   </div>
                 )}

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { CoverageNotice } from "@/components/ui/coverage-notice";
-import { AdZone } from "@/components/layout/ad-zone";
 
 export const metadata = {
   title: "ElectaBase — Political Transparency Database",
@@ -25,7 +24,7 @@ async function getLeaderboardSnippets() {
       slug: true,
       fullName: true,
       photoUrl: true,
-      currentParty: { select: { abbreviation: true } },
+      currentParty: { select: { abbreviation: true, slug: true } },
       effectivenessScores: {
         orderBy: { computedAt: "desc" },
         take: 1,
@@ -41,7 +40,7 @@ async function getLeaderboardSnippets() {
       slug: true,
       fullName: true,
       photoUrl: true,
-      currentParty: { select: { abbreviation: true } },
+      currentParty: { select: { abbreviation: true, slug: true } },
       corruptionScores: {
         orderBy: { computedAt: "desc" },
         take: 1,
@@ -61,8 +60,6 @@ export default async function HomePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <AdZone zoneKey="header-banner" className="mb-6" />
-
       <CoverageNotice />
 
       <div className="mt-8 text-center">
@@ -125,22 +122,25 @@ export default async function HomePage() {
           </div>
           <div className="space-y-2">
             {leaderboards.topEffective.map((p, i) => (
-              <Link
+              <div
                 key={p.slug}
-                href={`/politicians/${p.slug}`}
                 className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300"
               >
                 <span className="text-sm font-bold text-gray-400 w-5">#{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{p.fullName}</p>
+                  <Link href={`/politicians/${p.slug}`} className="block">
+                    <p className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer">{p.fullName}</p>
+                  </Link>
                   {p.currentParty && (
-                    <p className="text-xs text-gray-500">{p.currentParty.abbreviation}</p>
+                    <Link href={`/parties/${p.currentParty.slug}`} className="text-xs text-gray-500 hover:underline">
+                      {p.currentParty.abbreviation}
+                    </Link>
                   )}
                 </div>
                 <span className="text-sm font-bold text-blue-600">
                   {Number(p.effectivenessScores[0]?.score ?? 0).toFixed(1)}
                 </span>
-              </Link>
+              </div>
             ))}
             {leaderboards.topEffective.length === 0 && (
               <p className="text-sm text-gray-400 italic">No data yet. Run a data refresh to populate scores.</p>
@@ -157,22 +157,25 @@ export default async function HomePage() {
           </div>
           <div className="space-y-2">
             {leaderboards.topCorrupt.map((p, i) => (
-              <Link
+              <div
                 key={p.slug}
-                href={`/politicians/${p.slug}`}
                 className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:border-red-200"
               >
                 <span className="text-sm font-bold text-gray-400 w-5">#{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{p.fullName}</p>
+                  <Link href={`/politicians/${p.slug}`} className="block">
+                    <p className="text-sm font-medium text-gray-900 truncate hover:underline cursor-pointer">{p.fullName}</p>
+                  </Link>
                   {p.currentParty && (
-                    <p className="text-xs text-gray-500">{p.currentParty.abbreviation}</p>
+                    <Link href={`/parties/${p.currentParty.slug}`} className="text-xs text-gray-500 hover:underline">
+                      {p.currentParty.abbreviation}
+                    </Link>
                   )}
                 </div>
                 <span className="text-sm font-bold text-red-600">
                   {Number(p.corruptionScores[0]?.score ?? 0).toFixed(1)}
                 </span>
-              </Link>
+              </div>
             ))}
             {leaderboards.topCorrupt.length === 0 && (
               <p className="text-sm text-gray-400 italic">No data yet.</p>

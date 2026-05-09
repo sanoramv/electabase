@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // 5 DataSource records — v1 scraping scope
+  // 8 DataSource records — v1 scraping scope + approved journalistic sources
   const sources = [
     {
       name: "Election Commission of India",
@@ -65,6 +65,42 @@ async function main() {
         notes: "Affidavit PDFs parsed with pdf-parse. Filters to in-scope politicians.",
       },
     },
+    {
+      name: "The Times of India",
+      url: "https://timesofindia.com",
+      type: "JOURNALISTIC" as const,
+      reliabilityTier: 2,
+      scraperConfig: {
+        scope: { house: null, states: null },
+        urlPatterns: [],
+        dataTypes: ["news_articles"],
+        notes: "Approved journalistic source for admin-cited URLs only. Not scraped automatically in v1.",
+      },
+    },
+    {
+      name: "The Hindu",
+      url: "https://thehindu.com",
+      type: "JOURNALISTIC" as const,
+      reliabilityTier: 2,
+      scraperConfig: {
+        scope: { house: null, states: null },
+        urlPatterns: [],
+        dataTypes: ["news_articles"],
+        notes: "Approved journalistic source for admin-cited URLs only. Not scraped automatically in v1.",
+      },
+    },
+    {
+      name: "The Indian Express",
+      url: "https://indianexpress.com",
+      type: "JOURNALISTIC" as const,
+      reliabilityTier: 2,
+      scraperConfig: {
+        scope: { house: null, states: null },
+        urlPatterns: [],
+        dataTypes: ["news_articles"],
+        notes: "Approved journalistic source for admin-cited URLs only. Not scraped automatically in v1.",
+      },
+    },
   ];
 
   for (const source of sources) {
@@ -75,24 +111,59 @@ async function main() {
     });
   }
 
-  // 5 AdZone records — all enabled by default
-  const adZones = [
-    "header-banner",
-    "sidebar-top",
-    "sidebar-bottom",
-    "in-feed",
-    "profile-mid",
+  console.log("Seed complete: 8 DataSources created.");
+
+  // Seed known family relationships (uses name-based lookup; skips if politicians not found)
+  const familyRelationships = [
+    {
+      fromName: "M. K. Stalin",
+      toName: "Kanimozhi",
+      type: "SIBLING" as const,
+      description: "Both are children of M. Karunanidhi, former Chief Minister of Tamil Nadu",
+      sourceUrl: "https://en.wikipedia.org/wiki/M._K._Stalin",
+    },
+    {
+      fromName: "Kanimozhi",
+      toName: "M. K. Stalin",
+      type: "SIBLING" as const,
+      description: "Both are children of M. Karunanidhi, former Chief Minister of Tamil Nadu",
+      sourceUrl: "https://en.wikipedia.org/wiki/Kanimozhi",
+    },
   ];
 
-  for (const zoneKey of adZones) {
-    await prisma.adZone.upsert({
-      where: { zoneKey },
-      create: { zoneKey, isEnabled: true },
+  let relationshipsCreated = 0;
+  for (const rel of familyRelationships) {
+    const from = await prisma.politician.findFirst({
+      where: { fullName: { contains: rel.fromName, mode: "insensitive" } },
+      select: { id: true },
+    });
+    const to = await prisma.politician.findFirst({
+      where: { fullName: { contains: rel.toName, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!from || !to) continue;
+    await prisma.politicianRelationship.upsert({
+      where: {
+        politicianId_relatedPoliticianId_relationshipType: {
+          politicianId: from.id,
+          relatedPoliticianId: to.id,
+          relationshipType: rel.type,
+        },
+      },
+      create: {
+        politicianId: from.id,
+        relatedPoliticianId: to.id,
+        relationshipType: rel.type,
+        description: rel.description,
+        sourceUrl: rel.sourceUrl,
+      },
       update: {},
     });
+    relationshipsCreated++;
   }
-
-  console.log("Seed complete: 5 DataSources + 5 AdZones created.");
+  if (relationshipsCreated > 0) {
+    console.log(`Family relationships seeded: ${relationshipsCreated}`);
+  }
 }
 
 main()

@@ -91,6 +91,14 @@ enum ScrapeStatus {
   FAILED
 }
 
+enum RelationshipType {
+  SPOUSE
+  PARENT
+  CHILD
+  SIBLING
+  OTHER
+}
+
 // ─── Core Entities ────────────────────────────────────────────────────────────
 
 model Politician {
@@ -130,6 +138,8 @@ model Politician {
   effectivenessScores   EffectivenessScore[]
   corruptionScores      CorruptionScore[]
   correctionSubmissions CorrectionSubmission[]
+  relationshipsFrom PoliticianRelationship[] @relation("RelationshipsFrom")
+  relationshipsTo   PoliticianRelationship[] @relation("RelationshipsTo")
 
   @@index([countryCode])
   @@index([isPublished])
@@ -452,14 +462,24 @@ model CorrectionSubmission {
   @@map("correction_submissions")
 }
 
-// ─── Ad Zone Configuration ────────────────────────────────────────────────────
+// ─── Politician Relationships ─────────────────────────────────────────────────
 
-model AdZone {
-  id        String   @id @default(cuid())
-  zoneKey   String   @unique @map("zone_key")
-  isEnabled Boolean  @default(true) @map("is_enabled")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  updatedBy String?  @map("updated_by")
+model PoliticianRelationship {
+  id                  String           @id @default(cuid())
+  politicianId        String           @map("politician_id")
+  relatedPoliticianId String           @map("related_politician_id")
+  relationshipType    RelationshipType @map("relationship_type")
+  description         String?
+  sourceUrl           String           @map("source_url")
+  countryCode         String           @default("IN") @map("country_code")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
 
-  @@map("ad_zones")
+  politician        Politician @relation("RelationshipsFrom", fields: [politicianId], references: [id], onDelete: Cascade)
+  relatedPolitician Politician @relation("RelationshipsTo", fields: [relatedPoliticianId], references: [id], onDelete: Cascade)
+
+  @@unique([politicianId, relatedPoliticianId, relationshipType])
+  @@index([politicianId])
+  @@index([relatedPoliticianId])
+  @@map("politician_relationships")
 }

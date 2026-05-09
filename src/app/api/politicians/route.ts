@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         photoUrl: true,
         gender: true,
         countryCode: true,
+        dateOfBirth: true,
         currentParty: { select: { name: true, abbreviation: true, slug: true } },
         effectivenessScores: {
           orderBy: { computedAt: "desc" },
@@ -48,6 +49,16 @@ export async function GET(request: NextRequest) {
           orderBy: { computedAt: "desc" },
           take: 1,
           select: { score: true, rankNational: true },
+        },
+        attendanceRecords: {
+          select: { attendancePercentage: true },
+          orderBy: { year: "desc" },
+          take: 1,
+        },
+        electionContests: {
+          select: { state: true },
+          orderBy: { electionYear: "desc" },
+          take: 1,
         },
       },
     }),

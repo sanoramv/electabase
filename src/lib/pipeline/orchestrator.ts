@@ -10,6 +10,17 @@ import { sendRefreshSummaryEmail } from "@/lib/email/notifications";
 import type { ScraperResult } from "@/lib/scrapers/base";
 import type { DataSource } from "@prisma/client";
 
+async function getApprovedDomains(): Promise<Set<string>> {
+  const sources = await db.dataSource.findMany({ where: { isActive: true }, select: { url: true } });
+  return new Set(sources.map((s) => new URL(s.url).hostname.replace(/^www\./, "")));
+}
+
+export async function isDomainApproved(url: string): Promise<boolean> {
+  const hostname = new URL(url).hostname.replace(/^www\./, "");
+  const approved = await getApprovedDomains();
+  return approved.has(hostname);
+}
+
 const SCRAPER_MAP: Record<
   string,
   (source: DataSource) => Promise<ScraperResult>

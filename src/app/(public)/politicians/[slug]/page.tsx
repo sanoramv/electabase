@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { DisclaimerBanner } from "@/components/layout/disclaimer-banner";
 import { SourceBadge } from "@/components/politician/source-badge";
 import { CorrectionLink } from "@/components/politician/correction-link";
 import { ScoreCard } from "@/components/politician/score-card";
-import { AdZone } from "@/components/layout/ad-zone";
 import type { Metadata } from "next";
 
 export const revalidate = 3600; // ISR: revalidate every hour
@@ -46,10 +46,98 @@ export default async function PoliticianProfilePage({ params }: Props) {
       attendanceRecords: { orderBy: { year: "desc" } },
       effectivenessScores: { orderBy: { computedAt: "desc" }, take: 1 },
       corruptionScores: { orderBy: { computedAt: "desc" }, take: 1 },
+      relationshipsFrom: {
+        where: { relatedPolitician: { isPublished: true } },
+        include: {
+          relatedPolitician: {
+            select: {
+              slug: true,
+              fullName: true,
+              photoUrl: true,
+              currentParty: { select: { abbreviation: true } },
+              effectivenessScores: { orderBy: { computedAt: "desc" }, take: 1, select: { score: true } },
+              corruptionScores: { orderBy: { computedAt: "desc" }, take: 1, select: { score: true } },
+            },
+          },
+        },
+      },
+      relationshipsTo: {
+        where: { politician: { isPublished: true } },
+        include: {
+          politician: {
+            select: {
+              slug: true,
+              fullName: true,
+              photoUrl: true,
+              currentParty: { select: { abbreviation: true } },
+              effectivenessScores: { orderBy: { computedAt: "desc" }, take: 1, select: { score: true } },
+              corruptionScores: { orderBy: { computedAt: "desc" }, take: 1, select: { score: true } },
+            },
+          },
+        },
+      },
     },
   });
 
   if (!politician) notFound();
+
+  // Merge both relationship directions into a single display list
+  const INVERSE_TYPES: Record<string, string> = {
+    PARENT: "Child",
+    CHILD: "Parent",
+    SPOUSE: "Spouse",
+    SIBLING: "Sibling",
+    OTHER: "Relative",
+  };
+  const TYPE_LABELS: Record<string, string> = {
+    PARENT: "Parent",
+    CHILD: "Child",
+    SPOUSE: "Spouse",
+    SIBLING: "Sibling",
+    OTHER: "Relative",
+  };
+
+  type FamilyMember = {
+    slug: string;
+    fullName: string;
+    photoUrl: string | null;
+    partyAbbreviation: string | null;
+    effectivenessScore: number | null;
+    corruptionScore: number | null;
+    relationshipLabel: string;
+    sourceUrl: string;
+  };
+
+  const familyMembers: FamilyMember[] = [
+    ...politician.relationshipsFrom.map((r) => ({
+      slug: r.relatedPolitician.slug,
+      fullName: r.relatedPolitician.fullName,
+      photoUrl: r.relatedPolitician.photoUrl,
+      partyAbbreviation: r.relatedPolitician.currentParty?.abbreviation ?? null,
+      effectivenessScore: r.relatedPolitician.effectivenessScores[0]
+        ? Number(r.relatedPolitician.effectivenessScores[0].score)
+        : null,
+      corruptionScore: r.relatedPolitician.corruptionScores[0]
+        ? Number(r.relatedPolitician.corruptionScores[0].score)
+        : null,
+      relationshipLabel: r.description ?? TYPE_LABELS[r.relationshipType] ?? r.relationshipType,
+      sourceUrl: r.sourceUrl,
+    })),
+    ...politician.relationshipsTo.map((r) => ({
+      slug: r.politician.slug,
+      fullName: r.politician.fullName,
+      photoUrl: r.politician.photoUrl,
+      partyAbbreviation: r.politician.currentParty?.abbreviation ?? null,
+      effectivenessScore: r.politician.effectivenessScores[0]
+        ? Number(r.politician.effectivenessScores[0].score)
+        : null,
+      corruptionScore: r.politician.corruptionScores[0]
+        ? Number(r.politician.corruptionScores[0].score)
+        : null,
+      relationshipLabel: INVERSE_TYPES[r.relationshipType] ?? r.relationshipType,
+      sourceUrl: r.sourceUrl,
+    })),
+  ];
 
   const effScore = politician.effectivenessScores[0];
   const corrScore = politician.corruptionScores[0];
@@ -87,7 +175,7 @@ export default async function PoliticianProfilePage({ params }: Props) {
 
         {/* Profile header */}
         <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
             {politician.photoUrl ? (
               <Image
                 src={politician.photoUrl}
@@ -107,7 +195,7 @@ export default async function PoliticianProfilePage({ params }: Props) {
               {politician.currentParty && (
                 <p className="text-gray-600 mt-0.5">{politician.currentParty.name}</p>
               )}
-              <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+              <div className="mt-3 grid grid-cols-1 gap-y-1.5 sm:grid-cols-2 sm:gap-x-8 text-sm">
                 {age && (
                   <div className="flex items-center gap-1">
                     <span className="text-gray-500">Age:</span>
@@ -152,8 +240,6 @@ export default async function PoliticianProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <AdZone zoneKey="profile-mid" className="mt-6" />
-
         {/* Scores */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ScoreCard
@@ -183,7 +269,8 @@ export default async function PoliticianProfilePage({ params }: Props) {
           {politician.electionContests.length === 0 ? (
             <p className="text-sm text-gray-400 italic">No verified records on file.</p>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-lg">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
@@ -222,6 +309,7 @@ export default async function PoliticianProfilePage({ params }: Props) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </section>
@@ -232,7 +320,8 @@ export default async function PoliticianProfilePage({ params }: Props) {
           {politician.attendanceRecords.length === 0 ? (
             <p className="text-sm text-gray-400 italic">No verified records on file.</p>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-lg">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
@@ -263,6 +352,7 @@ export default async function PoliticianProfilePage({ params }: Props) {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </section>
@@ -345,6 +435,56 @@ export default async function PoliticianProfilePage({ params }: Props) {
                     <SourceBadge sourceUrl={c.sourceUrl} label="Controversy source" />
                   </div>
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Family in Politics */}
+        {familyMembers.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Family in Politics</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {familyMembers.map((member) => (
+                <Link
+                  key={`${member.slug}-${member.relationshipLabel}`}
+                  href={`/politicians/${member.slug}`}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all flex items-start gap-3"
+                >
+                  {member.photoUrl ? (
+                    <Image
+                      src={member.photoUrl}
+                      alt={member.fullName}
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover w-10 h-10 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm font-bold flex-shrink-0">
+                      {member.fullName[0]}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{member.fullName}</p>
+                    <p className="text-xs text-blue-600 font-medium">{member.relationshipLabel}</p>
+                    {member.partyAbbreviation && (
+                      <p className="text-xs text-gray-500">{member.partyAbbreviation}</p>
+                    )}
+                    <div className="flex gap-3 mt-1 text-xs">
+                      {member.effectivenessScore !== null && (
+                        <span className="text-blue-600">
+                          E: {member.effectivenessScore.toFixed(1)}
+                        </span>
+                      )}
+                      {member.corruptionScore !== null && (
+                        <span className="text-red-600">
+                          C: {member.corruptionScore.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <SourceBadge sourceUrl={member.sourceUrl} label="Relationship source" />
+                </Link>
               ))}
             </div>
           </section>

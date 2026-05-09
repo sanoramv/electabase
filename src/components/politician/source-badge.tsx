@@ -1,9 +1,17 @@
 interface SourceBadgeProps {
-  sourceUrl: string;
+  sourceUrl: string | null | undefined;
   label?: string;
 }
 
 export function SourceBadge({ sourceUrl, label = "Source" }: SourceBadgeProps) {
+  if (!sourceUrl) {
+    return (
+      <span className="inline-flex items-center text-xs text-gray-400 italic" title="Source unavailable">
+        No source
+      </span>
+    );
+  }
+
   return (
     <a
       href={sourceUrl}

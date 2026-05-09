@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.eci.gov.in",
       },
+      {
+        // Wikimedia Commons — Wikipedia politician photos
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
     ],
   },
 };

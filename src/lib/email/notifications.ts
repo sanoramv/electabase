@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+
+function getResend(): Resend {
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "";
 
 export interface RefreshSummary {
@@ -38,7 +46,7 @@ export async function sendRefreshSummaryEmail(log: RefreshSummary) {
       )
       .join("\n") ?? "";
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: "ElectaBase <noreply@electabase.in>",
     to: ADMIN_EMAIL,
     subject: `ElectaBase Refresh ${log.status} — ${new Date(log.triggeredAt).toISOString().slice(0, 10)}`,

@@ -33,7 +33,6 @@ export default async function AdminLayout({
             { href: "/admin/refresh", label: "Data Refresh" },
             { href: "/admin/sources", label: "Sources" },
             { href: "/admin/scores", label: "Scores" },
-            { href: "/admin/ads", label: "Ad Zones" },
           ].map((item) => (
             <Link
               key={item.href}
