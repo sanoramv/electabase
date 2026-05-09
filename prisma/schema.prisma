@@ -462,6 +462,26 @@ model CorrectionSubmission {
   @@map("correction_submissions")
 }
 
+// ─── Myneta Serious Crimes (raw scraped data) ─────────────────────────────────
+
+model MynetaSeriousCrime {
+  id                  Int      @id @default(autoincrement())
+  candidateName       String   @map("candidate_name")
+  candidateProfileUrl String   @map("candidate_profile_url")
+  constituency        String
+  party               String
+  criminalCasesCount  Int      @map("criminal_cases_count")
+  education           String
+  totalAssetsRaw      String   @map("total_assets_raw")
+  liabilitiesRaw      String   @map("liabilities_raw")
+  electionYear        Int      @map("election_year")
+  state               String
+  sourceUrl           String   @map("source_url")
+  scrapedAt           DateTime @default(now()) @map("scraped_at")
+
+  @@map("myneta_serious_crimes")
+}
+
 // ─── Politician Relationships ─────────────────────────────────────────────────
 
 model PoliticianRelationship {
